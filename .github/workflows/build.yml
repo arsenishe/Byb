@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Find and extract project ZIP
+      - name: Extract project ZIP
         run: |
           ARCHIVE=$(find . -maxdepth 1 -type f -name '*.zip' | head -n 1)
           if [ -z "$ARCHIVE" ]; then
@@ -39,6 +39,28 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
+      - name: Fix Java and Kotlin compatibility
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p = Path(os.environ["PROJECT_DIR"]) / "app/build.gradle.kts"
+          s = p.read_text()
+          s = s.replace(
+              "    defaultConfig {",
+              """    compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+
+              defaultConfig {"""
+          )
+          p.write_text(s)
+          PY
 
       - name: Build APK
         run: gradle assembleDebug
